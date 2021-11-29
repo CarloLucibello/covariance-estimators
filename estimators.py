@@ -356,7 +356,8 @@ def fit_Oracle(Ctrue, Xtrain, Xtest):
 
 
 
-
+#########################################################
+#########################################################
 class GradientAscent(BaseEstimator):
     def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1):
         self.Creg = None # come non-inizializzarla
@@ -384,8 +385,6 @@ class GradientAscent(BaseEstimator):
         likelihoods_tr, likelihoods_te, completions_te, self.steps, J =\
             mm.gradient_ascent_ADAM_stop(Xtrain, Ctrain, self.maxepochs, self.eta, B, Jinit,\
                                          bootstrapping=self.bootstrapping, datate=Xval, stop=self.stop)
-            # mm.gradient_ascent_inC_ADAM_stop(data,C_training,C_test,maxepochs,eta,B,C_init,bootstrapping=False,return_Fisher=False,T=0.,stop=False):
-
 
         self.history["train_likelihood"] = likelihoods_tr
         self.history["val_likelihood"] = likelihoods_te
@@ -406,3 +405,66 @@ def fit_GradientAscent(Xtrain, Xtest, bootstrapping=False, stop='completion', va
     res = compute_scores(est, Xtrain, Xtest)
     res["history"] = est.history
     return res
+#########################################################
+#########################################################
+
+
+
+#########################################################
+### Gradient Ascent a' la Wishart
+#########################################################
+#########################################################
+class GradientAscentWishart(BaseEstimator):
+    def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1):
+        self.Creg = None # come non-inizializzarla
+        
+        self.stop = stop
+        self.bootstrapping = bootstrapping
+        self.eta = 1.0E-4
+        self.maxepochs = 80000
+        self.training_fraction = 1 - val_frac
+        self.history = {}
+
+        
+    def fit(self, X):
+        self._fit(X)
+        return self
+    
+    def _fit(self, X):
+        T, N = np.shape(X)
+        Ttrain=int(self.training_fraction*T)
+        Xtrain = X[:Ttrain]
+        Xval = X[Ttrain:]
+        Ctrain = Xtrain.T @ Xtrain / Ttrain
+        Yinit = np.eye(N)
+
+        B = int(Ttrain*0.25)
+
+        likelihoods_tr_GAW,likelihoods_te_GAW,completions_te_GAW,steps_GAW,J_GAW = \
+                mm.gradient_ascent_Wishart_multiplier(Xtrain,Ctrain,maxepochs=self.maxepochs,eta=self.eta,B=B,Y_init=Yinit,\
+                                      bootstrapping=self.bootstrapping,datate=Xval,stop=self.stop)
+        
+
+        self.history["train_likelihood"] = likelihoods_tr_GAW
+        self.history["val_likelihood"] = likelihoods_te_GAW
+        self.history["val_completion_error"] = completions_te_GAW
+        self.Creg = np.linalg.inv(J_GAW)        
+        
+    def score(self, X):
+        J = np.linalg.inv(self.get_covariance())
+        return mm.likelihood_set_fast(J, X)
+
+    def get_covariance(self):
+        return self.Creg
+
+
+def fit_GradientAscentWishart(Xtrain, Xtest, bootstrapping=False, stop='completion', val_frac=0.1):
+    est = GradientAscentWishart(bootstrapping=bootstrapping, stop=stop, val_frac=val_frac)
+    est.fit(Xtrain)
+    res = compute_scores(est, Xtrain, Xtest)
+    res["history"] = est.history
+    return res
+#########################################################
+### END Gradient Ascent a' la Wishart
+#########################################################
+#########################################################

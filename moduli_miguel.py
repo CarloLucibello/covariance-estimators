@@ -176,153 +176,6 @@ def gradient_ascent(C_training,C_test,epochs,eta,B,J_init,bootstrapping=False):
     
     return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch
 
-def gradient_ascent_Lasso(C_training,C_test,epochs,eta,B,J_init,lambda_lasso=1.0E-2,bootstrapping=False):
-    J_epoch=np.copy(J_init)
-    likelihoods_tr=[]
-    likelihoods_te=[]
-    steps=[]
-    
-    tsamp=epochs/100  
-    
-    if bootstrapping:
-        for epoch in range(epochs):
-            
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-
-            signsmatrix=np.sign(J_epoch)
-            J_epoch-=eta*( corr2_bootstrap(data,B) - np.linalg.inv(J_epoch) + lambda_lasso*signsmatrix )
-
-    else:
-        for epoch in range(epochs):
-            
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-                
-            signsmatrix=np.sign(J_epoch)
-            J_epoch-=eta*( C_training - np.linalg.inv(J_epoch) + lambda_lasso*signsmatrix ) 
-
-    
-    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch
-
-#with an adaptative correction of the learning rate (not using it)
-def gradient_ascent_test(C_training,C_test,epochs,eta,B,J_init,bootstrapping=False,t_eta=100):
-    J_epoch=np.copy(J_init)
-    likelihoods_tr=[]
-    likelihoods_te=[]
-    steps=[]
-    
-    min_evals=[]
-    etas=[]
-    
-    tsamp=epochs/100  
-    
-    if bootstrapping:
-        for epoch in range(epochs):
-
-            deltaJ=-eta*( corr2_bootstrap(data,B) - np.linalg.inv(J_epoch))
-            min_eval=LA.eigsh(J_epoch+deltaJ,k=1,return_eigenvectors=False, which='SA')[0]
-            if min_eval>0.:
-                J_epoch+=deltaJ 
-            else: eta*=0.9
-
-            if epoch%t_eta==0:
-                eta*=1.1
-                        
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-                min_evals.append( min_eval )
-                etas.append(eta)
-                #min_eval.append( np.min(np.linalg.eig(J_epoch)[0]) )
-       
-    else:
-        for epoch in range(epochs):
-
-            
-            deltaJ=-eta*( corr2_bootstrap(data,B) - np.linalg.inv(J_epoch))
-            min_eval=LA.eigsh(J_epoch+deltaJ,k=1,return_eigenvectors=False, which='SA')[0]
-                #min_eval.append( np.min(np.linalg.eig(J_epoch)[0]) )
-            if min_eval>0.:
-                J_epoch+=deltaJ
-            else: eta*=0.1
-
-            if epoch%t_eta==0:
-                eta*=1.1
-
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-                min_evals.append( min_eval )
-                etas.append(eta)
-
-
-
-    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch,np.array(min_evals),np.array(etas)
-
-
-#c.f. arxiv.org/abs/1212.0901v2
-def gradient_ascent_Nesterov(C_training,C_test,epochs,eta,B,J_init,bootstrapping=False,increasing_eta=False):
-    J_epoch=np.copy(J_init)
-    D=len(J_init)
-    v=np.zeros((D,D))
-    epsilon=eta
-    mu=2.5E-1
-    mu2=mu**2
-    oneplusmuepsilon=(1.+mu)*epsilon
-    
-    likelihoods_tr=[]
-    likelihoods_te=[]
-    steps=[]
-    
-    tsamp=epochs/100  
-    
-    eta0=eta
-    
-    if bootstrapping:
-        for epoch in range(epochs):
-            
-            if increasing_eta:
-            #epsilon=eta0*np.exp(-1.*epoch*np.log(3.)/epochs)
-                epsilon=eta0+eta0*epoch/(1.*epochs)
-                oneplusmuepsilon=(1.+mu)*epsilon
-
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-
-            gradient=corr2_bootstrap(data,B) - np.linalg.inv(J_epoch)
-            J_epoch = J_epoch +mu2*v - oneplusmuepsilon*gradient
-            v = mu*v - eta*gradient 
-
-
-    else:
-        for epoch in range(epochs):
-            if increasing_eta:
-            #epsilon=eta0*np.exp(-1.*epoch*np.log(3.)/epochs)
-                epsilon=eta0+eta0*epoch/(1.*epochs)
-                oneplusmuepsilon=(1.+mu)*epsilon
-
-            if epoch%tsamp==0:
-                likelihoods_tr.append( m.likelihood_set(J_epoch,C_training) )
-                likelihoods_te.append( m.likelihood_set(J_epoch,C_test) )
-                steps.append(epoch)
-
-            gradient=C_training - np.linalg.inv(J_epoch)
-            J_epoch = J_epoch +mu2*v - oneplusmuepsilon*gradient
-            v = mu*v - eta*gradient 
-
-
-
-
-    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch
 
 #c.f. arxiv.org/pdf/1412.6980.pdf
 def gradient_ascent_ADAM(data,C_training,C_test,epochs,eta,B,J_init,bootstrapping=False):
@@ -379,25 +232,6 @@ def gradient_ascent_ADAM(data,C_training,C_test,epochs,eta,B,J_init,bootstrappin
             J_epoch = J_epoch - eta*mhat/(np.sqrt(vhat)+epsilon)
 
     return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch
-
-
-#in diagonal approximation
-def logdetFisher(C):
-    N=len(C)
-    somma=0.
-    for i in range(N):
-        for j in range(i+1):
-            somma+=np.log(C[i,i]*C[j,j]+C[i,j]*C[i,j])
-    return somma
-
-#ONLY THE HESSIAN ON -<H>. S=EMPIRICAL CORRELATION
-def logdetFisher_wrtC(J,S):
-    N=len(C)
-    somma=0.
-    for i in range(N):
-        for j in range(i+1):
-            somma+=np.log(C[i,i]*C[j,j]+C[i,j]*C[i,j])
-    return somma
 
 
 def completion_vector_inC(myC,myx):
@@ -492,125 +326,114 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
 
 
 
+#######################################################################
+#######################################################################
+#######################################################################
+# 'stop' must be ['completion','likelihood','False']
+# the condition 'datate==False' is equivalent to 'stop==False'
+def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
+                                      bootstrapping=False,datate=False,stop=True,traces=False):
+    Y_epoch=np.copy(Y_init)
+    N=len(Y_init)
 
-##########################################
-##########################################
-# gradient ascent in C
-##########################################
-#c.f. arxiv.org/pdf/1412.6980.pdf
-def gradient_ascent_inC_ADAM_stop(data,C_training,C_test,maxepochs,eta,B,C_init,bootstrapping=False,return_Fisher=False,T=0.,stop=False):
-    C_epoch=np.copy(C_init)
-    J_epoch=np.linalg.inv(C_epoch)
-    N=len(C_init)
-    v=np.zeros((N,N))
-    mom=np.zeros((N,N))
-    
-    epsilon=1.0E-6
-    beta1=0.9
-    beta2=0.999
-    
     likelihoods_tr=[]
     likelihoods_te=[]
+    completions_te=[]
     steps=[]
         
-    if return_Fisher:
-        log_det_Fisher=[]
-
-    tsamp=maxepochs/100
+    if maxepochs>100:
+        tsamp=maxepochs/100
+    else:
+        tsamp=10
+    
     eta0=eta
+    
     decreasing=False
     epoch=1
+
     behind_steps=4
-    C_past=np.zeros((behind_steps,N,N))
+    Y_past=np.zeros((behind_steps,N,N))
     
-    if bootstrapping:
-        while epoch < maxepochs and not decreasing:
-            epoch+=1
+    lambda_epoch=0.
+    
+    while epoch < maxepochs and not decreasing:
+        epoch+=1
 
-            Sigma_empirical=corr2_bootstrap(data,B) # potrei creare una variante di questa funzione che usa i T-B scartati come testset (non validation)
-            gradient=np.linalg.multi_dot([J_epoch, Sigma_empirical - C_epoch , J_epoch]) 
+        if bootstrapping:
+            YE=np.dot( Y_epoch,corr2_bootstrap(data,B) )
+        else:
+            YE=np.dot( Y_epoch,C_training )
 
-            mom = beta1*mom + (1.-beta1)*gradient
-            v = beta2*v + (1.-beta2)*gradient**2
-            mhat = mom/(1.-beta1**(epoch+1.))
-            vhat = v/(1.-beta2**(epoch+1.))
-
-            C_epoch += eta*mhat/(np.sqrt(vhat)+epsilon)
-##################
-#            aux=np.outer(np.diag(C_epoch),np.diag(C_epoch)) 
-#            C_epoch/=aux**(0.5)   # matrix standardisation
-##################
-
-            C_epoch *= N/np.trace(C_epoch)
-            J_epoch=np.linalg.inv(C_epoch)
-   
-            if epoch%tsamp==0:
-                likelihoods_tr.append( likelihood_set(J_epoch,C_training) )
-                if C_test is not False:
-                    likelihoods_te.append( likelihood_set(J_epoch,C_test) )
-
-                    if stop:
-                        if len(likelihoods_te) > behind_steps:
-                            logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
-                            if not False in logic_array: decreasing=True
-                        #if likelihoods_te[-1]<likelihoods_te[-4] and likelihoods_te[-2]<likelihoods_te[-4] and likelihoods_te[-3]<likelihoods_te[-4]: decreasing=True
+        W,Lambdasqrtm1,Z=np.linalg.svd(Y_epoch)
+        CY = np.dot( W*Lambdasqrtm1**-1. , Z )
                 
-                steps.append(epoch)
+        #########################
+        # computing the gradient of the multiplier wrt Y
+        C2Y=np.dot( W*Lambdasqrtm1**-3. , Z )
+        gradient_lambda=-lambda_epoch*(-2.)*(C2Y+C2Y.T)
+        #########################
 
-                for i in range(behind_steps-1):
-                    C_past[behind_steps-i-1]=np.copy(C_past[behind_steps-i-2])
-                C_past[0]=np.copy(C_epoch)
+        gradient=+0.5*( -(YE+YE.T) + (CY+CY.T) )
 
-    else:
-        while epoch < maxepochs and not decreasing:
-            epoch+=1
+        ##########################
+        ### lambda updating ######
+        # (using a larger learning rate for \lambda than for Y)
+        #for a more sophisticated method, 
+        # see https://en.wikipedia.org/wiki/Augmented_Lagrangian_method
+        lambda_epoch+=-10.*eta*(N-np.sum(Lambdasqrtm1**-2.)) 
+        #why this - is required for it to work "well"
+        ##########################
 
-            gradient=np.linalg.multi_dot([J_epoch, C_training - C_epoch , J_epoch]) 
+        ##########################
+        ### Y updating ######
+#        Y_epoch += eta*gradient # with no multiplier
+        Y_epoch += eta*(gradient + gradient_lambda)
+        ##########################
 
-            mom = beta1*mom + (1.-beta1)*gradient
-            v = beta2*v + (1.-beta2)*gradient**2
-            mhat = mom/(1.-beta1**(epoch+1.))
-            vhat = v/(1.-beta2**(epoch+1.))
 
-            C_epoch += eta*mhat/(np.sqrt(vhat)+epsilon)
-            C_epoch *= N/np.trace(C_epoch)
-            J_epoch=np.linalg.inv(C_epoch)
-
+    
+        if epoch%tsamp==0:
+            J_epoch = np.dot(Y_epoch,Y_epoch.T)
             
-            if epoch%tsamp==0:
-                likelihoods_tr.append( likelihood_set(J_epoch,C_training) )
-                if C_test is not False:
-                    likelihoods_te.append( likelihood_set(J_epoch,C_test) )
-                
-                    if stop:
-                        if len(likelihoods_te) > behind_steps:
-                            logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
-                            if not False in logic_array: decreasing=True
-                    #    if likelihoods_te[-1]<likelihoods_te[-4] and likelihoods_te[-2]<likelihoods_te[-4] and likelihoods_te[-3]<likelihoods_te[-4]: decreasing=True
+            likelihoods_tr.append( likelihood_set_fast(J_epoch,data) )
+            if traces !=False:
+                traces.append( np.sum(Lambdasqrtm1**(-2.)) )
 
-                steps.append(epoch)
-                
-                for i in range(behind_steps-1):
-                    C_past[behind_steps-i-1]=np.copy(C_past[behind_steps-i-2])
-                C_past[0]=np.copy(C_epoch)
+            if datate is not False:
+                myvector=[np.average(np.abs(vector-completion_vector_inJ(J_epoch,vector))) for vector in datate]
+                thiscompletion=np.average(myvector)
+                completions_te.append(thiscompletion)
 
-                if return_Fisher:
-                    log_det_Fisher.append(logdetFisher(C_epoch))
+                likelihoods_te.append( likelihood_set_fast(J_epoch,datate) )
 
- #    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),J_epoch
+                if stop=='completion':
+                    if len(completions_te) > behind_steps:
+                        logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
+                        if not False in logic_array: decreasing=True
+                if stop=='likelihood':
+                    if len(likelihoods_te) > behind_steps:
+                        logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
+                        if not False in logic_array: decreasing=True
 
-    if return_Fisher:
-        return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),C_past[behind_steps-2],log_det_Fisher
-    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(steps),C_past[behind_steps-2]
-##########################################
-##########################################
-##########################################
+            steps.append(epoch)
+
+            for i in range(behind_steps-1):
+                Y_past[behind_steps-i-1]=np.copy(Y_past[behind_steps-i-2])
+            Y_past[0]=np.copy(Y_epoch)
+
+
+    final_J=np.dot(Y_past[behind_steps-2],Y_past[behind_steps-2].T)
+        
+    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(completions_te),\
+            np.array(steps),final_J
+#######################################################################
+#######################################################################
+#######################################################################
 
 ################################
 ## end functions for mini-batch learning 
 ################################
 ################################
-
 
 
 
