@@ -415,7 +415,7 @@ def fit_GradientAscent(Xtrain, Xtest, bootstrapping=False, stop='completion', va
 #########################################################
 #########################################################
 class GradientAscentWishart(BaseEstimator):
-    def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1):
+    def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1,vectorconstraint=False):
         self.Creg = None # come non-inizializzarla
         
         self.stop = stop
@@ -424,6 +424,7 @@ class GradientAscentWishart(BaseEstimator):
         self.maxepochs = 80000
         self.training_fraction = 1 - val_frac
         self.history = {}
+        self.vectorconstraint=vectorconstraint
 
         
     def fit(self, X):
@@ -440,7 +441,13 @@ class GradientAscentWishart(BaseEstimator):
 
         B = int(Ttrain*0.25)
 
-        likelihoods_tr_GAW,likelihoods_te_GAW,completions_te_GAW,steps_GAW,J_GAW = \
+        if self.vectorconstraint:
+            likelihoods_tr_GAW,likelihoods_te_GAW,completions_te_GAW,steps_GAW,J_GAW = \
+                mm.gradient_ascent_Wishart_vectormultiplier(Xtrain,Ctrain,maxepochs=self.maxepochs,eta=self.eta,B=B,Y_init=Yinit,\
+                                      bootstrapping=self.bootstrapping,datate=Xval,stop=self.stop)
+        
+        else:
+            likelihoods_tr_GAW,likelihoods_te_GAW,completions_te_GAW,steps_GAW,J_GAW = \
                 mm.gradient_ascent_Wishart_multiplier(Xtrain,Ctrain,maxepochs=self.maxepochs,eta=self.eta,B=B,Y_init=Yinit,\
                                       bootstrapping=self.bootstrapping,datate=Xval,stop=self.stop)
         
