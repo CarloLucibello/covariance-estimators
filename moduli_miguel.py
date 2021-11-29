@@ -325,7 +325,6 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
 
 
 
-
 #######################################################################
 #######################################################################
 #######################################################################
@@ -381,6 +380,113 @@ def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
         #for a more sophisticated method, 
         # see https://en.wikipedia.org/wiki/Augmented_Lagrangian_method
         lambda_epoch+=-10.*eta*(N-np.sum(Lambdasqrtm1**-2.)) 
+        #why this - is required for it to work "well"
+        ##########################
+
+        ##########################
+        ### Y updating ######
+#        Y_epoch += eta*gradient # with no multiplier
+        Y_epoch += eta*(gradient + gradient_lambda)
+        ##########################
+
+
+    
+        if epoch%tsamp==0:
+            J_epoch = np.dot(Y_epoch,Y_epoch.T)
+            
+            likelihoods_tr.append( likelihood_set_fast(J_epoch,data) )
+            if traces !=False:
+                traces.append( np.sum(Lambdasqrtm1**(-2.)) )
+
+            if datate is not False:
+                myvector=[np.average(np.abs(vector-completion_vector_inJ(J_epoch,vector))) for vector in datate]
+                thiscompletion=np.average(myvector)
+                completions_te.append(thiscompletion)
+
+                likelihoods_te.append( likelihood_set_fast(J_epoch,datate) )
+
+                if stop=='completion':
+                    if len(completions_te) > behind_steps:
+                        logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
+                        if not False in logic_array: decreasing=True
+                if stop=='likelihood':
+                    if len(likelihoods_te) > behind_steps:
+                        logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
+                        if not False in logic_array: decreasing=True
+
+            steps.append(epoch)
+
+            for i in range(behind_steps-1):
+                Y_past[behind_steps-i-1]=np.copy(Y_past[behind_steps-i-2])
+            Y_past[0]=np.copy(Y_epoch)
+
+
+    final_J=np.dot(Y_past[behind_steps-2],Y_past[behind_steps-2].T)
+        
+    return np.array(likelihoods_tr),np.array(likelihoods_te),np.array(completions_te),\
+            np.array(steps),final_J
+#######################################################################
+#######################################################################
+#######################################################################
+
+
+#######################################################################
+#######################################################################
+#######################################################################
+# 'stop' must be ['completion','likelihood','False']
+# the condition 'datate==False' is equivalent to 'stop==False'
+# this is a variant imposing C_ii =1 forall i, not only trace(C)=N
+def gradient_ascent_Wishart_vectormultiplier(data,C_training,maxepochs,eta,B,Y_init,\
+                                      bootstrapping=False,datate=False,stop=True,traces=False):
+    Y_epoch=np.copy(Y_init)
+    N=len(Y_init)
+
+    likelihoods_tr=[]
+    likelihoods_te=[]
+    completions_te=[]
+    steps=[]
+        
+    if maxepochs>100:
+        tsamp=maxepochs/100
+    else:
+        tsamp=10
+    
+    eta0=eta
+    
+    decreasing=False
+    epoch=1
+
+    behind_steps=4
+    Y_past=np.zeros((behind_steps,N,N))
+    
+    lambda_epoch=np.zeros((N))
+    
+    while epoch < maxepochs and not decreasing:
+        epoch+=1
+
+        if bootstrapping:
+            YE=np.dot( Y_epoch,corr2_bootstrap(data,B) )
+        else:
+            YE=np.dot( Y_epoch,C_training )
+
+        W,Lambdasqrtm1,Z=np.linalg.svd(Y_epoch)
+        CY = np.dot( W*Lambdasqrtm1**-1. , Z )
+                
+        #########################
+        # computing the gradient of the multiplier wrt Y
+        C  = np.dot( W*Lambdasqrtm1**-2. , W.T )
+        M=np.dot( C*np.diag(lambda_epoch) , CY )
+        gradient_lambda=-(-2.)*(M + M.T)
+        #########################
+
+        gradient=+0.5*( -(YE+YE.T) + (CY+CY.T) )
+
+        ##########################
+        ### lambda updating ######
+        # (using a larger learning rate for \lambda than for Y)
+        #for a more sophisticated method, 
+        # see https://en.wikipedia.org/wiki/Augmented_Lagrangian_method
+        lambda_epoch+=-100.*eta*(1.-np.diag(C)) 
         #why this - is required for it to work "well"
         ##########################
 
