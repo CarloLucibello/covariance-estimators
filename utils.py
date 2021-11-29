@@ -13,7 +13,7 @@ def get_dati_tommaso(standardize=True):
     
     data_subjects_zeromean = {}
     for i, sub in data_subjects.items():
-        data_subjects_zeromean[i] = (sub - np.mean(sub,axis=0)) / np.std(sub,ddof=1,axis=0)
+        data_subjects_zeromean[i] = (sub - np.mean(sub,axis=0)) / np.std(sub,axis=0)
     
     if standardize:
         return data_subjects_zeromean
