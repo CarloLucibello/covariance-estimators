@@ -273,15 +273,15 @@ def fit_Shrinkage(Xtrain, Xtest, shrinkage):
     return compute_scores(est, Xtrain, Xtest)
     
 class RIE(BaseEstimator):
-    def __init__(self, eta=1):
+    def __init__(self, eta=1,q=None,correction=True):
         self.Creg = None # come non-inizializzarla
         self.eta = eta
-        
+        self.q = q
+        self.correction=correction 
     def fit(self, X):
         self._fit(X)
         return self
     
-    # https://www.researchgate.net/profile/Joel-Bun/publication/302339055_My_Beautiful_Laundrette_Cleaning_Correlation_Matrices_for_Portfolio_Optimization/links/572fabdf08aeb1c73d13a609/My-Beautiful-Laundrette-Cleaning-Correlation-Matrices-for-Portfolio-Optimization.pdf
     def _fit(self,Xtrain):
         T, N = np.shape(Xtrain)
         
@@ -294,21 +294,50 @@ class RIE(BaseEstimator):
         lambdas = lambdas[order]                     # reordering the eigvals
         E = E.T[order]                               # now each row of E is an eigvec
         #########
-        q = N / T
+        if self.q == None:
+            q = N / T
+        else: 
+            q=self.q
 
         zs = lambdas - eta
         ss = np.array([np.sum(1 / (z - lambdas)) for z in zs]) / N
         ss += - 1 / (zs - lambdas) / N 
         xiRIE = lambdas / np.abs(1 - q + q*zs*ss)**2
         
-        sigma2 = lambdas[-1] / (1 - np.sqrt(q))**2
-        lambdaplus = lambdas[-1] * ((np.sqrt(q) + 1) / (-np.sqrt(q) + 1))**2
+        if self.correction:
+            # Stieltjes transform of the Marcenko-Pastur lambdas   
+            thisq=q
+            sigma2 = lambdas[-1] / (1 - np.sqrt(thisq))**2
+            lambdaplus = lambdas[-1] * ((np.sqrt(thisq) + 1) / (-np.sqrt(thisq) + 1))**2
+            gMPs = (zs + sigma2 *(thisq-1) - np.sqrt((zs-lambdas[-1])*(zs-lambdaplus))) / (2*thisq*zs*sigma2) 
 
-        # Stieltjes transform of the Marcenko-Pastur lambdas   
-        gMPs = (zs + sigma2 *(q-1) - np.sqrt((zs-lambdas[-1])*(zs-lambdaplus))) / (2*q*zs*sigma2) 
-        Gammas = sigma2 * np.abs(1 - q + q * zs * gMPs)**2 / lambdas
-        xihat = xiRIE * np.maximum(1, Gammas)
-        # xihat = xiRIE
+            ########################################################################################
+            # Marchenko-Pastur regularisation of downwards finite-size effect for small eigenvalues:
+            # c.f. to the Risk article:
+            # https://www.researchgate.net/profile/Joel-Bun/publication/302339055_My_Beautiful_Laundrette_Cleaning_Correlation_Matrices_for_Portfolio_Optimization/links/572fabdf08aeb1c73d13a609/My-Beautiful-Laundrette-Cleaning-Correlation-Matrices-for-Portfolio-Optimization.pdf
+            Gammas = sigma2 * np.abs(1 - q + q * zs * gMPs)**2 / lambdas
+            ########################################################################################
+
+            #print(Gammas)
+
+            '''
+            ########################################################################################
+            # Inverse-Wishart regularisation of downwards finite-size effect for small eigenvalues:
+            # c.f. the Physics Reports article: Physics Reports 666 (2017), p. 76
+            kappa = 2*lambdas[-1]/( (1.-q-lambdas[-1])**2 -4*q*lambdas[-1] ) 
+            gIWs=(zs*(1.+kappa) -kappa*(1.-q) -\ # here it is \pm \sqrt
+                    ((kappa*(1.-q)-zs*(1+kappa))**2 - zs*(zs+2*q*kappa)*(2*kappa+1))**0.5 )\
+                    /(zs*(zs+2.*q*kappa))
+
+            alphaS=(1.+2.*q*kappa)**-1
+            prefactor = 1.+alphaS *(lambdas-1.)
+            Gammas = prefactor * np.abs(1 - q + q * zs * gIWs)**2 / lambdas
+            ########################################################################################
+            '''
+
+            xihat = xiRIE * np.maximum(1, Gammas) 
+        else:
+            xihat = xiRIE
         #########
         self.Creg = np.linalg.multi_dot([E.T, np.diag(xihat), E])
          
@@ -321,16 +350,22 @@ class RIE(BaseEstimator):
 
 
 def fit_RIE(Xtrain, Xtest):
-    est = RIE().fit(Xtrain)
+    est = RIE(correction=True).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
     
 
-def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood"):
+def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood",cvq=False):
     scoring = get_scoring_function(cv_scoring)
-    est = RIE().fit(Xtrain)
-    etas = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
-    cv = GridSearchCV(RIE(), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
+    #est = RIE().fit(Xtrain)
+    T,N=np.shape(Xtrain)
+    if cvq != False:
+        qs = np.arange(1.0E-2,1.,2.0E-2)
+        cv = GridSearchCV(RIE(correction=True), {'q': qs}, cv=6, n_jobs=None, scoring=scoring)
+    else:
+        etas = np.logspace(-0.5*np.log(N)/np.log(10.),2.,num=30)
+        cv = GridSearchCV(RIE(correction=True), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
     est = cv.fit(Xtrain).best_estimator_
+    print(cv.best_params_)
     return compute_scores(est, Xtrain, Xtest)
     
 
