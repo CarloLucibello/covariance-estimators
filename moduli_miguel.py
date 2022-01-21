@@ -23,7 +23,7 @@ def likelihood_set_fast(J,data):
 #    somma+=np.linalg.multi_dot([medie.T,J,medie]) 
 #    somma+=np.dot(medie.T , np.dot(J,medie) ) 
 #    somma+=np.sum(medie*np.dot(medie,J)  )
-    auto=np.real(np.linalg.eigvals(J))
+    auto = np.abs(np.real(np.linalg.eigvals(J)))
     return -0.5*(somma+N*np.log(2*np.pi)-np.sum(np.log(auto)))
 
 def energy_set(J,C):
