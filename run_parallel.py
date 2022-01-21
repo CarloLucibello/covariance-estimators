@@ -13,56 +13,51 @@ ray.init(num_cpus=12)
 def single_run(key, Xtrain, Xtest, Ctrue=None):
     res = {}
 
-    if Ctrue is not None:
-        tstart = process_time() 
-        res["Oracle"] = estimators.fit_Oracle(Ctrue, Xtrain, Xtest)
-        res["Oracle"]["time"] = process_time() - tstart
+    # if Ctrue is not None:
+    #     tstart = process_time() 
+    #     res["Oracle"] = estimators.fit_Oracle(Ctrue, Xtrain, Xtest)
+    #     res["Oracle"]["time"] = process_time() - tstart
             
-    tstart = process_time() 
-    res["PCA_Minka"] = estimators.fit_PCA_Minka(Xtrain, Xtest)
-    res["PCA_Minka"]["time"] = process_time() - tstart
+    # tstart = process_time() 
+    # res["PCA_Minka"] = estimators.fit_PCA_Minka(Xtrain, Xtest)
+    # res["PCA_Minka"]["time"] = process_time() - tstart
     
-    tstart = process_time() 
-    res["RIE"] = estimators.fit_RIE(Xtrain, Xtest)
-    res["RIE"]["time"] = process_time() - tstart
-    
-    for cv_scoring in ["likelihood", "completion_error", "pseudolikelihood"]:
-        tstart = process_time() 
-        res[f"PCA_CV_{cv_scoring}"] = estimators.fit_PCA_CV(Xtrain, Xtest)
-        res[f"PCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
+    # tstart = process_time() 
+    # res["RIE"] = estimators.fit_RIE(Xtrain, Xtest)
+    # res["RIE"]["time"] = process_time() - tstart
+
+    # for cv_scoring in ["likelihood", "completion_error", "pseudolikelihood"]:
+    #     tstart = process_time() 
+    #     res[f"PCA_CV_{cv_scoring}"] = estimators.fit_PCA_CV(Xtrain, Xtest)
+    #     res[f"PCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
         
-        tstart = process_time() 
-        res[f"Shrink_CV_{cv_scoring}"] = estimators.fit_Shrinkage_CV(Xtrain, Xtest)
-        res[f"Shrink_CV_{cv_scoring}"]["time"] = process_time() - tstart
+    #     tstart = process_time() 
+    #     res[f"Shrink_CV_{cv_scoring}"] = estimators.fit_Shrinkage_CV(Xtrain, Xtest)
+    #     res[f"Shrink_CV_{cv_scoring}"]["time"] = process_time() - tstart
         
-        tstart = process_time() 
-        res[f"RIE_CV_{cv_scoring}"] = estimators.fit_RIE_CV(Xtrain, Xtest)
-        res[f"RIE_CV_{cv_scoring}"]["time"] = process_time() - tstart
+    #     tstart = process_time() 
+    #     res[f"RIE_CV_{cv_scoring}"] = estimators.fit_RIE_CV(Xtrain, Xtest)
+    #     res[f"RIE_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
-        tstart = process_time() 
-        res[f"ConservativePCA_CV_{cv_scoring}"] = estimators.fit_ConservativePCA_CV(Xtrain, Xtest)
-        res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
+    #     tstart = process_time() 
+    #     res[f"ConservativePCA_CV_{cv_scoring}"] = estimators.fit_ConservativePCA_CV(Xtrain, Xtest)
+    #     res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
-    # val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
-    # tstart = process_time() 
-    # res["GA_bootstrapping=False_stop=completion"] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-    #                     bootstrapping=False, stop='completion', val_frac=val_frac_GA)
-    # res["GA_bootstrapping=False_stop=completion"]["time"] = process_time() - tstart
-    
-    # tstart = process_time() 
-    # res["GA_bootstrapping=True_stop=completion"] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-    #                     bootstrapping=True, stop='completion', val_frac=val_frac_GA)
-    # res["GA_bootstrapping=True_stop=completion"]["time"] = process_time() - tstart
 
-    # tstart = process_time() 
-    # res["GA_bootstrapping=False_stop=likelihood"] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-    #                     bootstrapping=False, stop='likelihood', val_frac=val_frac_GA)
-    # res["GA_bootstrapping=False_stop=likelihood"]["time"] = process_time() - tstart
-
-    # tstart = process_time() 
-    # res["GA_bootstrapping=True_stop=likelihood"] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-    #                     bootstrapping=True, stop='likelihood', val_frac=val_frac_GA)
-    # res["GA_bootstrapping=True_stop=likelihood"]["time"] = process_time() - tstart
+    val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
+    for cv_scoring in ["likelihood", "completion", "pseudolikelihood"]:
+        for b in [True, False]:
+            # name = "GA_bootstrapping={b}_stop={cv_scoring}"
+            # tstart = process_time() 
+            # res[name] = estimators.fit_GradientAscent(Xtrain, Xtest, 
+            #                     bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
+            # res[name]["time"] = process_time() - tstart
+            
+            name = "GAW_bootstrapping={b}_stop={cv_scoring}"
+            tstart = process_time() 
+            res[name] = estimators.fit_GradientAscentWishart(Xtrain, Xtest, 
+                                bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
+            res[name]["time"] = process_time() - tstart
 
 
     # res["Lasso_CV"] = estimators.fit_GraphicalLasso_CV(Xtrain, Xtest)
@@ -70,7 +65,8 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
     return key, res
 
 def parallel_run_tommaso():
-    resfile = 'all_results_tommaso.pickle'
+    # resfile = 'all_results_tommaso.pickle'
+    resfile = 'results_GAW_tommaso.pickle'
     Xall = get_dati_tommaso(standardize=True)
 
 
@@ -87,7 +83,8 @@ def parallel_run_dirichelet(alpha=1, Ttrain=144):
     Ttest = int(Ttrain * 20/80)  #small Ttest
     # Ttest = 1000    
     N = 116
-    resfile = 'all_results_dirichelet_finalv2_smallTtest.pickle'
+    # resfile = 'all_results_dirichelet_finalv2_smallTtest.pickle'
+    resfile = 'results_GAW_dirichelet_smallTtest.pickle'
     # resfile = 'test.pickle'
     Xall, Call, Uall, lambdas = generate_data_dirichlet(Ns=Ns, T=Ttrain+Ttest, 
                                                         alpha=alpha, N=N)
