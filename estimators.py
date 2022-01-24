@@ -451,6 +451,7 @@ def fit_GradientAscent(Xtrain, Xtest, bootstrapping=False, stop='completion', va
 #########################################################
 class GradientAscentWishart(BaseEstimator):
     def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1,vectorconstraint=False):
+    
         self.Creg = None # come non-inizializzarla
         
         self.stop = stop

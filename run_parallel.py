@@ -45,7 +45,7 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
 
 
     val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
-    for cv_scoring in ["likelihood", "completion", "pseudolikelihood"]:
+    for cv_scoring in ["likelihood", "completion"]: #  "pseudolikelihood"
         for b in [True, False]:
             # name = "GA_bootstrapping={b}_stop={cv_scoring}"
             # tstart = process_time() 
@@ -53,10 +53,10 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
             #                     bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
             # res[name]["time"] = process_time() - tstart
             
-            name = "GAW_bootstrapping={b}_stop={cv_scoring}"
+            name = f"GAW_bootstrapping={b}_stop={cv_scoring}"
             tstart = process_time() 
             res[name] = estimators.fit_GradientAscentWishart(Xtrain, Xtest, 
-                                bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
+                                bootstrapping=b, stop=cv_scoring, val_frac=val_frac_GA)
             res[name]["time"] = process_time() - tstart
 
 
