@@ -440,7 +440,7 @@ def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
 # the condition 'datate==False' is equivalent to 'stop==False'
 # this is a variant imposing C_ii =1 forall i, not only trace(C)=N
 def gradient_ascent_Wishart_vectormultiplier(data,C_training,maxepochs,eta,B,Y_init,\
-                                      bootstrapping=False,datate=False,stop="likelihood",traces=False):
+                                      bootstrapping=False,datate=False,stop=False,traces=False):
     assert stop in ['completion','likelihood', False]
     Y_epoch=np.copy(Y_init)
     N=len(Y_init)
