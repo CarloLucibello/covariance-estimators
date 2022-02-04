@@ -321,7 +321,7 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
 # 'stop' must be ['completion','likelihood','False']
 # the condition 'datate==False' is equivalent to 'stop==False'
 def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
-                                      bootstrapping=False,datate=False,stop=True,traces=False):
+                                      bootstrapping=False,datate=False,stop=False,traces=False):
     assert stop in [False, "completion", "likelihood"]
     Y_epoch=np.copy(Y_init)
     N=len(Y_init)
