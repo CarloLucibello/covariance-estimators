@@ -14,16 +14,16 @@ def likelihood_samples(J,samples):
 def likelihood_set(J,data):
     return np.average(likelihood_samples(J,data))
 
-def likelihood_set_fast(J,data):
-    medie=np.average(data,axis=0)
-
+def likelihood_set_fast(J,data,removeaverage=False):
     T,N=np.shape(data)
     C=np.dot(data.T,data)/T
     somma=np.trace(np.dot(C,J))
-#    somma+=np.linalg.multi_dot([medie.T,J,medie]) 
-#    somma+=np.dot(medie.T , np.dot(J,medie) ) 
-#    somma+=np.sum(medie*np.dot(medie,J)  )
-    auto = np.abs(np.real(np.linalg.eigvals(J)))
+    if removeaverage:
+        medie=np.average(data,axis=0)
+        somma+=np.linalg.multi_dot([medie.T,J,medie]) 
+        somma+=np.dot(medie.T , np.dot(J,medie) ) 
+        somma+=np.sum(medie*np.dot(medie,J)  )
+    auto=np.real(np.linalg.eigvals(J))
     return -0.5*(somma+N*np.log(2*np.pi)-np.sum(np.log(auto)))
 
 def energy_set(J,C):
@@ -31,17 +31,6 @@ def energy_set(J,C):
     somma=np.trace(np.dot(C,J))
     return -0.5*(somma)
 
-'''
-#this is not the reconstruction, but the "completion" error
-def reconstruction_meansquareerror(J,dati):
-    T,N=np.shape(dati)
-    somma=0.
-    precisioni=np.diag(J)
-    matrice=np.eye(N)+(J-np.diag(precisioni))/precisioni
-    for dato in dati:
-        somma+=(np.linalg.norm(np.dot(matrice,dato)))/np.linalg.norm(dato)
-    return somma/(np.sqrt(N)*T)
-'''
 
 #this is not the reconstruction, but the "completion" error
 def reconstruction_meansquareerror(J,dati):
@@ -50,8 +39,6 @@ def reconstruction_meansquareerror(J,dati):
     matrice=np.eye(N)+(J-np.diag(precisioni))/precisioni
     myvector= [np.average(np.abs(np.dot(matrice,vector))) for vector in dati]
     return np.average(myvector)
-
-
 
 def KLdivergence(C1,C2):
     D=len(C1)
@@ -310,7 +297,9 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
                     if len(likelihoods_te) > behind_steps:
                         logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
+
                 if stop=='likelihood':
+                ## qua come mai non c'e'  if len(likelihoods_te) > behind_steps:
                     logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
                     if not False in logic_array: decreasing=True
 
@@ -333,7 +322,6 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
 # the condition 'datate==False' is equivalent to 'stop==False'
 def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
                                       bootstrapping=False,datate=False,stop=False,traces=False):
-
     assert stop in [False, "completion", "likelihood"]
     Y_epoch=np.copy(Y_init)
     N=len(Y_init)
@@ -408,11 +396,11 @@ def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
 
                 likelihoods_te.append( likelihood_set_fast(J_epoch,datate) )
 
-                if stop =='completion':
+                if stop=='completion':
                     if len(completions_te) > behind_steps:
                         logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
-                if stop =='likelihood':
+                if stop=='likelihood':
                     if len(likelihoods_te) > behind_steps:
                         logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
