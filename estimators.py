@@ -204,7 +204,7 @@ class ConservativePCA(BaseEstimator):
         Cclean = np.linalg.multi_dot([E.T, Lambda, E])
         Cdiag = 1 / np.sqrt(np.diagonal(Cclean))
         Cclean = Cdiag.reshape(-1,1) * Cclean * Cdiag.reshape(1,-1)
-        Jclean = np.linalg.inv(Cclean)
+        #Jclean = np.linalg.inv(Cclean)
         self.Creg = Cclean
          
     def score(self, X):
@@ -230,10 +230,65 @@ def fit_ConservativePCA_CV(Xtrain, Xtest, cv_scoring="likelihood", n_jobs=None):
     return compute_scores(est, Xtrain, Xtest)
     
 
+###########################################################
+# Shrinkage with general biased matrix
+###########################################################
+###########################################################
+class Shrinkage_biasedmatrix(BaseEstimator):
+	def __init__(self,alpha=1.0E-3,M0=None):
+		self.Creg = None # come non-inizializzarla
+		self.alpha = alpha
+		self.M0 = M0
+        
+	def fit(self, X):
+		self._fit(X)
+		return self
+    
+	def _fit(self, Xtrain):
+		T, N = np.shape(Xtrain)
+		alpha = self.alpha
+		Ctrain = (Xtrain.T @ Xtrain) / T
+		Cclean = Ctrain * (1.-alpha) + self.M0 * alpha
+		self.Creg = Cclean
+
+	def score(self, X):
+		J = np.linalg.inv(self.Creg)
+		return mm.likelihood_set_fast(J, X)
+
+	def get_covariance(self):
+		return self.Creg
+
+
+def fit_Shrinkage_biasedmatrix(Xtrain, Xtest,alpha,M0):
+    est = Shrinkage_biasedmatrix(alpha,M0).fit(Xtrain)
+    return compute_scores(est, Xtrain, Xtest)
+    
+def  fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, M0, cv_scoring="likelihood", n_jobs=None):
+    scoring = get_scoring_function(cv_scoring)
+    shrinkages = np.logspace(-2, -0.1, 30)
+
+    cv = GridSearchCV(Shrinkage_biasedmatrix(M0=M0), {'alpha': shrinkages}, cv=6,\
+                     scoring=scoring, n_jobs=n_jobs) 
+    est = cv.fit(Xtrain).best_estimator_
+    return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
+
+
+###########################################################
+###########################################################
+###########################################################
 def fit_PCA(Xtrain, Xtest, ncomponents):
     est = PCA(svd_solver='full',n_components=ncomponents ).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
     
+###########################################################
+###########################################################
+###########################################################
 def fit_FactorAnalysis(Xtrain, Xtest, ncomponents):
     est = FactorAnalysis(n_components=ncomponents, max_iter=1000).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
@@ -246,8 +301,14 @@ def fit_FactorAnalysis_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood"):
                      cv=6, scoring=scoring, n_jobs=n_jobs)
     est = cv.fit(Xtrain).best_estimator_
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
     
 
+###########################################################
+###########################################################
+###########################################################
 def fit_GraphicalLasso(Xtrain, Xtest, alpha):
     est = GraphicalLasso(max_iter=1000, alpha=alpha).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
@@ -257,8 +318,14 @@ def fit_GraphicalLasso_CV(Xtrain, Xtest, n_jobs=None):
     cv = GraphicalLassoCV(max_iter=1000, cv=6)
     est = cv.fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
     
 
+###########################################################
+###########################################################
+###########################################################
 def fit_Shrinkage_CV(Xtrain, Xtest, shrinkages=None, n_jobs=None, cv_scoring="likelihood"):
     scoring = get_scoring_function(cv_scoring)
     if shrinkages is None:
@@ -271,7 +338,13 @@ def fit_Shrinkage_CV(Xtrain, Xtest, shrinkages=None, n_jobs=None, cv_scoring="li
 def fit_Shrinkage(Xtrain, Xtest, shrinkage):
     est = ShrunkCovariance(shrinkage=shrinkage).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
     
+###########################################################
+###########################################################
+###########################################################
 class RIE(BaseEstimator):
     def __init__(self, eta=1,q=None,correction=True):
         self.Creg = None # come non-inizializzarla
@@ -365,11 +438,17 @@ def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood",cvq=False):
         etas = np.logspace(-0.5*np.log(N)/np.log(10.),2.,num=30)
         cv = GridSearchCV(RIE(correction=True), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
     est = cv.fit(Xtrain).best_estimator_
-    print(cv.best_params_)
+#    print(cv.best_params_)
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
     
 
     
+###########################################################
+###########################################################
+###########################################################
 class Oracle(BaseEstimator):
     def __init__(self, Ctrue):
         self.Ctrue = Ctrue
@@ -388,6 +467,9 @@ class Oracle(BaseEstimator):
 def fit_Oracle(Ctrue, Xtrain, Xtest):
     est = Oracle(Ctrue).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
+###########################################################
+###########################################################
+###########################################################
 
 
 
@@ -451,7 +533,6 @@ def fit_GradientAscent(Xtrain, Xtest, bootstrapping=False, stop='completion', va
 #########################################################
 class GradientAscentWishart(BaseEstimator):
     def __init__(self, bootstrapping=False, stop='completion', val_frac=0.1,vectorconstraint=False):
-    
         self.Creg = None # come non-inizializzarla
         
         self.stop = stop

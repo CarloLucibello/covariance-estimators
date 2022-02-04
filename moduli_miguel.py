@@ -15,15 +15,16 @@ def likelihood_set(J,data):
     return np.average(likelihood_samples(J,data))
 
 def likelihood_set_fast(J,data):
-    medie=np.average(data,axis=0)
 
     T,N=np.shape(data)
     C=np.dot(data.T,data)/T
     somma=np.trace(np.dot(C,J))
-#    somma+=np.linalg.multi_dot([medie.T,J,medie]) 
-#    somma+=np.dot(medie.T , np.dot(J,medie) ) 
-#    somma+=np.sum(medie*np.dot(medie,J)  )
-    auto = np.abs(np.real(np.linalg.eigvals(J)))
+    if False:
+        medie=np.average(data,axis=0)
+        somma+=np.linalg.multi_dot([medie.T,J,medie]) 
+        somma+=np.dot(medie.T , np.dot(J,medie) ) 
+        somma+=np.sum(medie*np.dot(medie,J)  )
+    auto=np.real(np.linalg.eigvals(J))
     return -0.5*(somma+N*np.log(2*np.pi)-np.sum(np.log(auto)))
 
 def energy_set(J,C):
@@ -252,7 +253,6 @@ def completion_vector_inJ(myJ,myx):
 # 'stop' must be ['completion','likelihood','False']
 # the condition 'datate==False' is equivalent to 'stop==False'
 def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrapping=False,T=0.,datate=False,stop=False):
-    assert stop in ['completion','likelihood',False]
     J_epoch=np.copy(J_init)
     D=len(J_init)
     v=np.zeros((D,D))
@@ -310,9 +310,9 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
                     if len(likelihoods_te) > behind_steps:
                         logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
-                if stop=='likelihood':
-                    logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
-                    if not False in logic_array: decreasing=True
+                    if stop=='likelihood':
+                        logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
+                        if not False in logic_array: decreasing=True
 
             steps.append(epoch)
 
@@ -332,9 +332,7 @@ def gradient_ascent_ADAM_stop(data,C_training,maxepochs,eta,B,J_init,bootstrappi
 # 'stop' must be ['completion','likelihood','False']
 # the condition 'datate==False' is equivalent to 'stop==False'
 def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
-                                      bootstrapping=False,datate=False,stop=False,traces=False):
-
-    assert stop in [False, "completion", "likelihood"]
+                                      bootstrapping=False,datate=False,stop=True,traces=False):
     Y_epoch=np.copy(Y_init)
     N=len(Y_init)
 
@@ -408,11 +406,11 @@ def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
 
                 likelihoods_te.append( likelihood_set_fast(J_epoch,datate) )
 
-                if stop =='completion':
+                if stop=='completion':
                     if len(completions_te) > behind_steps:
                         logic_array=[ completions_te[-1]>pippo for pippo in completions_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
-                if stop =='likelihood':
+                if stop=='likelihood':
                     if len(likelihoods_te) > behind_steps:
                         logic_array=[ likelihoods_te[-1]<pippo for pippo in likelihoods_te[-behind_steps:-1] ]
                         if not False in logic_array: decreasing=True
@@ -440,8 +438,7 @@ def gradient_ascent_Wishart_multiplier(data,C_training,maxepochs,eta,B,Y_init,\
 # the condition 'datate==False' is equivalent to 'stop==False'
 # this is a variant imposing C_ii =1 forall i, not only trace(C)=N
 def gradient_ascent_Wishart_vectormultiplier(data,C_training,maxepochs,eta,B,Y_init,\
-                                      bootstrapping=False,datate=False,stop=False,traces=False):
-    assert stop in ['completion','likelihood', False]
+                                      bootstrapping=False,datate=False,stop=True,traces=False):
     Y_epoch=np.copy(Y_init)
     N=len(Y_init)
 
