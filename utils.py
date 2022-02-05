@@ -1,6 +1,7 @@
 import numpy as np
 from os.path import isfile
 import moduli_miguel as mm
+from numpy.random import default_rng
 
 def get_dati_tommaso(standardize=True):
     path='dati_Tommaso_sani/'
@@ -32,10 +33,11 @@ def generate_data_dirichlet(*, Ns=40, T=180, N=116, alpha=1.):
     return Xall, Call, Uall, lambdas
 
 
-def split_train_test(X, train_fraction, standardize=False, shuffle=True):
+def split_train_test(X, train_fraction, standardize=False, shuffle=True, seed=None):
+    rng = default_rng(seed)
     X = X.copy()
     if shuffle:
-        np.random.shuffle(X)
+        rng.shuffle(X)
     T, N = X.shape
     Xtrain = X[:int(train_fraction*T)]
     Xtest = X[int(train_fraction*T):]

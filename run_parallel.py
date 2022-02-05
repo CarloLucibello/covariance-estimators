@@ -10,7 +10,7 @@ ray.init(num_cpus=12)
 
 # Function executed by a single process
 @ray.remote
-def single_run(key, Xtrain, Xtest, Ctrue=None):
+def single_run(key, Xtrain, Xtest, Ctrue=None, Cbar=None):
     res = {}
 
     # if Ctrue is not None:
@@ -26,7 +26,7 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
     # res["RIE"] = estimators.fit_RIE(Xtrain, Xtest)
     # res["RIE"]["time"] = process_time() - tstart
 
-    # for cv_scoring in ["likelihood", "completion_error", "pseudolikelihood"]:
+    for cv_scoring in ["likelihood", "completion_error"]: #"pseudolikelihood"
     #     tstart = process_time() 
     #     res[f"PCA_CV_{cv_scoring}"] = estimators.fit_PCA_CV(Xtrain, Xtest)
     #     res[f"PCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
@@ -42,6 +42,11 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
     #     tstart = process_time() 
     #     res[f"ConservativePCA_CV_{cv_scoring}"] = estimators.fit_ConservativePCA_CV(Xtrain, Xtest)
     #     res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
+
+        tstart = process_time() 
+        r = estimators.fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, Cbar, cv_scoring=cv_scoring)
+        res[f"ShrinkGroup_CV_{cv_scoring}"] = r
+        res[f"ShrinkGroup_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
 
     # val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
@@ -59,21 +64,23 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
     #                             bootstrapping=b, stop=cv_scoring, val_frac=val_frac_GA)
     #         res[name]["time"] = process_time() - tstart
 
-
+        
     # res["Lasso_CV"] = estimators.fit_GraphicalLasso_CV(Xtrain, Xtest)
-    res["FA_CV"]  = estimators.fit_FactorAnalysis_CV(Xtrain, Xtest)
+    # res["FA_CV"]  = estimators.fit_FactorAnalysis_CV(Xtrain, Xtest)
     return key, res
 
 def parallel_run_tommaso():
     # resfile = 'all_results_tommaso.pickle'
-    resfile = 'results_FA_tommaso.pickle'
+    resfile = 'results_ShrinkGroup_tommaso.pickle'
     Xall = get_dati_tommaso(standardize=True)
-
-
+    train_fraction = 0.8
+    
     futures = []
     for i, X in Xall.items():
-        Xtrain, Xtest = split_train_test(X, train_fraction=0.8, standardize=True)
-        futures.append(single_run.remote(i, Xtrain, Xtest))
+        # Compute the corr mat C obtained flattening the training data from all patients
+        Cbar = computeCbar(Xall, i, train_fraction=train_fraction)
+        Xtrain, Xtest = split_train_test(X, train_fraction=train_fraction, standardize=True, seed=i)
+        futures.append(single_run.remote(i, Xtrain, Xtest, Cbar=Cbar))
     wait_and_dump(futures, resfile)
 
 
@@ -84,17 +91,20 @@ def parallel_run_dirichelet(alpha=1, Ttrain=144):
     # Ttest = 1000    
     N = 116
     # resfile = 'all_results_dirichelet_finalv2_smallTtest.pickle'
-    resfile = 'results_FA_dirichelet_smallTtest.pickle'
+    # resfile = 'results_FA_dirichelet_smallTtest.pickle'
+    resfile = 'results_ShrinkGroup_dirichelet_smallTtest.pickle'
     # resfile = 'test.pickle'
     Xall, Call, Uall, lambdas = generate_data_dirichlet(Ns=Ns, T=Ttrain+Ttest, 
                                                         alpha=alpha, N=N)
-
+    train_fraction = Ttrain/(Ttrain+Ttest)
+        
     futures = []
     for i, X in Xall.items():
         key = (i, alpha, Ttrain, N)
         Ctrue = Call[i]
-        Xtrain, Xtest = split_train_test(X, train_fraction=Ttrain/(Ttrain+Ttest), standardize=True)
-        futures.append(single_run.remote(key, Xtrain, Xtest, Ctrue))
+        Cbar = computeCbar(Xall, i, train_fraction=train_fraction)
+        Xtrain, Xtest = split_train_test(X, train_fraction=train_fraction, standardize=True, seed=i)
+        futures.append(single_run.remote(key, Xtrain, Xtest, Ctrue, Cbar=Cbar))
     wait_and_dump(futures, resfile, Call)
 
 
@@ -119,6 +129,19 @@ def wait_and_dump(futures, resfile, Call=None):
 
     with open(resfile, 'wb') as f:
         pickle.dump(all_results, f)
+
+def computeCbar(Xall, idx, train_fraction=0.8):
+    assert len(Xall) > 1
+    T, N = Xall[idx].shape
+    Cbar = np.zeros((N, N))
+
+    for idx2, X2 in Xall.items():
+        if idx2 == idx:
+            continue
+        Xtrain2, Xtest2 = split_train_test(X2, train_fraction=train_fraction,standardize=True,seed=idx2)
+        Cbar += np.corrcoef(Xtrain2.T)
+
+    return Cbar / (len(Xall) - 1)
 
 if __name__ == "__main__":
     # parallel_run_tommaso()
