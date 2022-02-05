@@ -259,11 +259,13 @@ class Shrinkage_biasedmatrix(BaseEstimator):
 		return self.Creg
 
 
-def fit_Shrinkage_biasedmatrix(Xtrain, Xtest,alpha,M0):
+def fit_Shrinkage_biasedmatrix(Xtrain, Xtest, alpha, M0):
+    assert M0 is not None
     est = Shrinkage_biasedmatrix(alpha,M0).fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
     
 def  fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, M0, cv_scoring="likelihood", n_jobs=None):
+    assert M0 is not None
     scoring = get_scoring_function(cv_scoring)
     shrinkages = np.logspace(-2, -0.1, 30)
 
