@@ -73,12 +73,13 @@ def parallel_run_tommaso():
     # resfile = 'all_results_tommaso.pickle'
     resfile = 'results_ShrinkGroup_tommaso.pickle'
     Xall = get_dati_tommaso(standardize=True)
-
+    train_fraction = 0.8
+    
     futures = []
     for i, X in Xall.items():
         # Compute the corr mat C obtained flattening the training data from all patients
-        Cbar = computeCbar(Xall, i, train_fraction=0.8)
-        Xtrain, Xtest = split_train_test(X, train_fraction=0.8, standardize=True, seed=i)
+        Cbar = computeCbar(Xall, i, train_fraction=train_fraction)
+        Xtrain, Xtest = split_train_test(X, train_fraction=train_fraction, standardize=True, seed=i)
         futures.append(single_run.remote(i, Xtrain, Xtest, Cbar=Cbar))
     wait_and_dump(futures, resfile)
 
@@ -95,13 +96,14 @@ def parallel_run_dirichelet(alpha=1, Ttrain=144):
     # resfile = 'test.pickle'
     Xall, Call, Uall, lambdas = generate_data_dirichlet(Ns=Ns, T=Ttrain+Ttest, 
                                                         alpha=alpha, N=N)
-
+    train_fraction = Ttrain/(Ttrain+Ttest)
+        
     futures = []
     for i, X in Xall.items():
         key = (i, alpha, Ttrain, N)
         Ctrue = Call[i]
-        Cbar = computeCbar(Xall, i, train_fraction=0.8)
-        Xtrain, Xtest = split_train_test(X, train_fraction=Ttrain/(Ttrain+Ttest), standardize=True, seed=i)
+        Cbar = computeCbar(Xall, i, train_fraction=train_fraction)
+        Xtrain, Xtest = split_train_test(X, train_fraction=train_fraction, standardize=True, seed=i)
         futures.append(single_run.remote(key, Xtrain, Xtest, Ctrue, Cbar=Cbar))
     wait_and_dump(futures, resfile, Call)
 
