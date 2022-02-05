@@ -51,6 +51,21 @@ def split_train_test(X, train_fraction, standardize=False, shuffle=True):
 
     return Xtrain, Xtest
 
+def computeCbar(database,train_fraction=0.8):
+    #indextoexclude=[21,23,28,31,32]
+    indextoexclude=[]
+    Ns,T,N=np.shape(database)
+    Cs=np.zeros((Ns-len(indextoexclude),N,N))
+
+    i=0
+    for subi,data_subject in enumerate(database):
+        if subi not in indextoexclude:
+            Xtrain, Xtest=split_train_test(data_subject,train_fraction=train_fraction,standardize=True,shuffle=True)
+            Cs[i]=np.corrcoef(Xtrain.T)
+
+            i+=1
+    Cbar=np.average(Cs,axis=0)
+    return Cbar
 
 def completion_tvalue(dataset,myC):
     myJ=np.linalg.inv(myC)
