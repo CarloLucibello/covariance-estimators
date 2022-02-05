@@ -3,7 +3,7 @@ from os.path import isfile
 import moduli_miguel as mm
 
 def get_dati_tommaso(standardize=True):
-    path='../dati_Tommaso_sani/'
+    path='dati_Tommaso_sani/'
     data_subjects = {}
     for i in range(1,65):
         nomefile = path+'subj'+str(i)+'.rs_timesries_HC.txt'

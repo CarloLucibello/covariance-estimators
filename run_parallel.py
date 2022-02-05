@@ -44,29 +44,29 @@ def single_run(key, Xtrain, Xtest, Ctrue=None):
     #     res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
 
-    val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
-    for cv_scoring in ["likelihood", "completion"]: #  "pseudolikelihood"
-        for b in [True, False]:
-            # name = "GA_bootstrapping={b}_stop={cv_scoring}"
-            # tstart = process_time() 
-            # res[name] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-            #                     bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
-            # res[name]["time"] = process_time() - tstart
+    # val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
+    # for cv_scoring in ["likelihood", "completion"]: #  "pseudolikelihood"
+    #     for b in [True, False]:
+    #         # name = "GA_bootstrapping={b}_stop={cv_scoring}"
+    #         # tstart = process_time() 
+    #         # res[name] = estimators.fit_GradientAscent(Xtrain, Xtest, 
+    #         #                     bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
+    #         # res[name]["time"] = process_time() - tstart
             
-            name = f"GAW_bootstrapping={b}_stop={cv_scoring}"
-            tstart = process_time() 
-            res[name] = estimators.fit_GradientAscentWishart(Xtrain, Xtest, 
-                                bootstrapping=b, stop=cv_scoring, val_frac=val_frac_GA)
-            res[name]["time"] = process_time() - tstart
+    #         name = f"GAW_bootstrapping={b}_stop={cv_scoring}"
+    #         tstart = process_time() 
+    #         res[name] = estimators.fit_GradientAscentWishart(Xtrain, Xtest, 
+    #                             bootstrapping=b, stop=cv_scoring, val_frac=val_frac_GA)
+    #         res[name]["time"] = process_time() - tstart
 
 
     # res["Lasso_CV"] = estimators.fit_GraphicalLasso_CV(Xtrain, Xtest)
-    ## res["FA_CV"]  = estimators.fit_FactorAnalysis_CV(Xtrain, Xtest)
+    res["FA_CV"]  = estimators.fit_FactorAnalysis_CV(Xtrain, Xtest)
     return key, res
 
 def parallel_run_tommaso():
     # resfile = 'all_results_tommaso.pickle'
-    resfile = 'results_GAW_tommaso.pickle'
+    resfile = 'results_FA_tommaso.pickle'
     Xall = get_dati_tommaso(standardize=True)
 
 
@@ -84,7 +84,7 @@ def parallel_run_dirichelet(alpha=1, Ttrain=144):
     # Ttest = 1000    
     N = 116
     # resfile = 'all_results_dirichelet_finalv2_smallTtest.pickle'
-    resfile = 'results_GAW_dirichelet_smallTtest.pickle'
+    resfile = 'results_FA_dirichelet_smallTtest.pickle'
     # resfile = 'test.pickle'
     Xall, Call, Uall, lambdas = generate_data_dirichlet(Ns=Ns, T=Ttrain+Ttest, 
                                                         alpha=alpha, N=N)
