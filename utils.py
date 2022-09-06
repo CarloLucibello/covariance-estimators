@@ -21,6 +21,24 @@ def get_dati_tommaso(standardize=True):
     else:
         return data_subjects
 
+def get_dati_camcan(standardize=True):
+    path='dati_CamCAN/'
+    data_subjects = {}
+    for i in range(1,653):
+        nomefile = path+'subj'+str(i)+'.txt.preprocessed'
+        if isfile(nomefile):
+            this_data = np.loadtxt(nomefile)
+            data_subjects[i] = this_data
+    
+    data_subjects_zeromean = {}
+    for i, sub in data_subjects.items():
+        data_subjects_zeromean[i] = (sub - np.mean(sub,axis=0)) / np.std(sub,axis=0)
+    
+    if standardize:
+        return data_subjects_zeromean
+    else:
+        return data_subjects
+
 def generate_data_dirichlet(*, Ns=40, T=180, N=116, alpha=1.):
     
     #training_fraction= ... # 

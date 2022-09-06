@@ -1,13 +1,14 @@
 #%%
 from genericpath import isfile
 import pickle
-from utils import get_dati_tommaso, split_train_test, merge_dicts, generate_data_dirichlet
+from utils import get_dati_tommaso, get_dati_camcan,\
+    split_train_test, merge_dicts, generate_data_dirichlet
 import estimators
 import numpy as np
 from time import process_time
 import ray
 ray.init(num_cpus=12)
-
+#%%
 # Function executed by a single process
 @ray.remote
 def single_run(key, Xtrain, Xtest, Ctrue=None, Cbar=None):
@@ -83,6 +84,19 @@ def parallel_run_tommaso():
         futures.append(single_run.remote(i, Xtrain, Xtest, Cbar=Cbar))
     wait_and_dump(futures, resfile)
 
+def parallel_run_camcan():
+    resfile = 'all_results_camcan.pickle'
+    Xall = get_dati_camcan(standardize=True)
+    train_fraction = 0.8
+    
+    futures = []
+    for i, X in Xall.items():
+        # Compute the corr mat C obtained flattening the training data from all patients
+        Cbar = computeCbar(Xall, i, train_fraction=train_fraction)
+        Xtrain, Xtest = split_train_test(X, train_fraction=train_fraction, standardize=True, seed=i)
+        futures.append(single_run.remote(i, Xtrain, Xtest, Cbar=Cbar))
+    wait_and_dump(futures, resfile)
+
 
 def parallel_run_dirichelet(alpha=1, Ttrain=144):
     #I generate a single realisation of the synthetic dataset 
@@ -148,3 +162,4 @@ if __name__ == "__main__":
     for alpha in [1., 1.5, 2., 2.5, 3., 3.5, 4]:
         for Ttrain in [144, 300, 1000, 2000]:
             parallel_run_dirichelet(alpha, Ttrain)
+ 
