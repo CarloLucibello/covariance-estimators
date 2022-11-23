@@ -429,16 +429,12 @@ def fit_RIE(Xtrain, Xtest):
     return compute_scores(est, Xtrain, Xtest)
     
 
-def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood",cvq=False):
+def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood"):
     scoring = get_scoring_function(cv_scoring)
     #est = RIE().fit(Xtrain)
-    T,N=np.shape(Xtrain)
-    if cvq != False:
-        qs = np.arange(1.0E-2,1.,2.0E-2)
-        cv = GridSearchCV(RIE(correction=True), {'q': qs}, cv=6, n_jobs=None, scoring=scoring)
-    else:
-        etas = np.logspace(-0.5*np.log(N)/np.log(10.),2.,num=30)
-        cv = GridSearchCV(RIE(correction=True), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
+    T, N=np.shape(Xtrain)
+    etas = np.array([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100]) / np.sqrt(N)
+    cv = GridSearchCV(RIE(correction=True), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
     est = cv.fit(Xtrain).best_estimator_
 #    print(cv.best_params_)
     return compute_scores(est, Xtrain, Xtest)

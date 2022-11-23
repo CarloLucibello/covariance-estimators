@@ -7,7 +7,7 @@ import estimators
 import numpy as np
 from time import process_time
 import ray
-ray.init(num_cpus=12)
+ray.init(num_cpus=24)
 #%%
 # Function executed by a single process
 @ray.remote
@@ -28,51 +28,49 @@ def single_run(key, Xtrain, Xtest, Ctrue=None, Cbar=None):
     # res["RIE"]["time"] = process_time() - tstart
 
     for cv_scoring in ["likelihood", "completion_error"]: #"pseudolikelihood"
-    #     tstart = process_time() 
-    #     res[f"PCA_CV_{cv_scoring}"] = estimators.fit_PCA_CV(Xtrain, Xtest)
-    #     res[f"PCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
+        tstart = process_time() 
+        res[f"PCA_CV_{cv_scoring}"] = estimators.fit_PCA_CV(Xtrain, Xtest, cv_scoring=cv_scoring)
+        res[f"PCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
         
-    #     tstart = process_time() 
-    #     res[f"Shrink_CV_{cv_scoring}"] = estimators.fit_Shrinkage_CV(Xtrain, Xtest)
-    #     res[f"Shrink_CV_{cv_scoring}"]["time"] = process_time() - tstart
-        
-    #     tstart = process_time() 
-    #     res[f"RIE_CV_{cv_scoring}"] = estimators.fit_RIE_CV(Xtrain, Xtest)
-    #     res[f"RIE_CV_{cv_scoring}"]["time"] = process_time() - tstart
-
-    #     tstart = process_time() 
-    #     res[f"ConservativePCA_CV_{cv_scoring}"] = estimators.fit_ConservativePCA_CV(Xtrain, Xtest)
-    #     res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
+        tstart = process_time() 
+        res[f"Shrink_CV_{cv_scoring}"] = estimators.fit_Shrinkage_CV(Xtrain, Xtest, cv_scoring=cv_scoring)
+        res[f"Shrink_CV_{cv_scoring}"]["time"] = process_time() - tstart
+            
+        tstart = process_time() 
+        res[f"RIE_CV_{cv_scoring}"] = estimators.fit_RIE_CV(Xtrain, Xtest, cv_scoring=cv_scoring)
+        res[f"RIE_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
         tstart = process_time() 
-        r = estimators.fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, Cbar, cv_scoring=cv_scoring)
-        res[f"ShrinkGroup_CV_{cv_scoring}"] = r
-        res[f"ShrinkGroup_CV_{cv_scoring}"]["time"] = process_time() - tstart
+        res[f"ConservativePCA_CV_{cv_scoring}"] = estimators.fit_ConservativePCA_CV(Xtrain, Xtest, cv_scoring=cv_scoring)
+        res[f"ConservativePCA_CV_{cv_scoring}"]["time"] = process_time() - tstart
 
 
-    # val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
-    # for cv_scoring in ["likelihood", "completion"]: #  "pseudolikelihood"
+    #     tstart = process_time() 
+    #     r = estimators.fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, Cbar, cv_scoring=cv_scoring)
+    #     res[f"ShrinkGroup_CV_{cv_scoring}"] = r
+    #     res[f"ShrinkGroup_CV_{cv_scoring}"]["time"] = process_time() - tstart
+
+    #     val_frac_GA = 1 / 6 # Comparable to the 6 folds used in cross-validation above
     #     for b in [True, False]:
-    #         # name = "GA_bootstrapping={b}_stop={cv_scoring}"
-    #         # tstart = process_time() 
-    #         # res[name] = estimators.fit_GradientAscent(Xtrain, Xtest, 
-    #         #                     bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
-    #         # res[name]["time"] = process_time() - tstart
+    #         name = "GA_bootstrapping={b}_stop={cv_scoring}"
+    #         tstart = process_time() 
+    #         res[name] = estimators.fit_GradientAscent(Xtrain, Xtest, 
+    #                             bootstrapping=False, stop=cv_scoring, val_frac=val_frac_GA)
+    #         res[name]["time"] = process_time() - tstart
             
     #         name = f"GAW_bootstrapping={b}_stop={cv_scoring}"
     #         tstart = process_time() 
     #         res[name] = estimators.fit_GradientAscentWishart(Xtrain, Xtest, 
     #                             bootstrapping=b, stop=cv_scoring, val_frac=val_frac_GA)
     #         res[name]["time"] = process_time() - tstart
-
-        
+    
     # res["Lasso_CV"] = estimators.fit_GraphicalLasso_CV(Xtrain, Xtest)
     # res["FA_CV"]  = estimators.fit_FactorAnalysis_CV(Xtrain, Xtest)
+    
     return key, res
 
 def parallel_run_tommaso():
-    # resfile = 'all_results_tommaso.pickle'
-    resfile = 'results_ShrinkGroup_tommaso.pickle'
+    resfile = 'all_results_tommaso.pickle'
     Xall = get_dati_tommaso(standardize=True)
     train_fraction = 0.8
     
@@ -105,9 +103,7 @@ def parallel_run_dirichelet(alpha=1, Ttrain=144):
     # Ttest = 1000    
     N = 116
     # resfile = 'all_results_dirichelet_finalv2_smallTtest.pickle'
-    # resfile = 'results_FA_dirichelet_smallTtest.pickle'
-    resfile = 'results_ShrinkGroup_dirichelet_smallTtest.pickle'
-    # resfile = 'test.pickle'
+    resfile = 'all_results_dirichelet_ALL_CV.pickle'
     Xall, Call, Uall, lambdas = generate_data_dirichlet(Ns=Ns, T=Ttrain+Ttest, 
                                                         alpha=alpha, N=N)
     train_fraction = Ttrain/(Ttrain+Ttest)
