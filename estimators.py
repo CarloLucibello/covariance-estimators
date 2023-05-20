@@ -117,55 +117,6 @@ def fit_PCA_Minka(Xtrain, Xtest):
     est = PCA(svd_solver='full',n_components='mle').fit(Xtrain)
     return compute_scores(est, Xtrain, Xtest)
     
-
-class RIE(BaseEstimator):
-    def __init__(self, eta=1):
-        self.Creg = None # come non-inizializzarla
-        self.eta = eta
-        
-    def fit(self, X):
-        self._fit(X)
-        return self
-    
-    # https://www.researchgate.net/profile/Joel-Bun/publication/302339055_My_Beautiful_Laundrette_Cleaning_Correlation_Matrices_for_Portfolio_Optimization/links/572fabdf08aeb1c73d13a609/My-Beautiful-Laundrette-Cleaning-Correlation-Matrices-for-Portfolio-Optimization.pdf
-    def _fit(self,Xtrain):
-        T, N = np.shape(Xtrain)
-        
-        C_training = np.corrcoef(Xtrain.T) 
-        eta = complex(0.,1.) * self.eta / np.sqrt(N)
-
-        lambdas, E = np.linalg.eigh(C_training)
-        lambdas = np.abs(np.real(lambdas))
-        order = np.argsort(lambdas)[::-1]
-        lambdas = lambdas[order]                     # reordering the eigvals
-        E = E.T[order]                               # now each row of E is an eigvec
-        #########
-        q = N / T
-
-        zs = lambdas - eta
-        ss = np.array([np.sum(1 / (z - lambdas)) for z in zs]) / N
-        ss += - 1 / (zs - lambdas) / N 
-        xiRIE = lambdas / np.abs(1 - q + q*zs*ss)**2
-        
-        sigma2 = lambdas[-1] / (1 - np.sqrt(q))**2
-        lambdaplus = lambdas[-1] * ((np.sqrt(q) + 1) / (-np.sqrt(q) + 1))**2
-
-        # Stieltjes transform of the Marcenko-Pastur lambdas   
-        gMPs = (zs + sigma2 *(q-1) - np.sqrt((zs-lambdas[-1])*(zs-lambdaplus))) / (2*q*zs*sigma2) 
-        Gammas = sigma2 * np.abs(1 - q + q * zs * gMPs)**2 / lambdas
-        xihat = xiRIE * np.maximum(1, Gammas)
-        # xihat = xiRIE
-        #########
-        self.Creg = np.linalg.multi_dot([E.T, np.diag(xihat), E])
-         
-    def score(self, X):
-        J = np.linalg.inv(self.Creg)
-        return mm.likelihood_set_fast(J, X)
-
-    def get_covariance(self):
-        return self.Creg
-
-
 class ConservativePCA(BaseEstimator):
     def __init__(self, p=10):
         self.Creg = None # come non-inizializzarla
@@ -267,7 +218,7 @@ def fit_Shrinkage_biasedmatrix(Xtrain, Xtest, alpha, M0):
 def  fit_Shrinkage_biasedmatrix_CV(Xtrain, Xtest, M0, cv_scoring="likelihood", n_jobs=None):
     assert M0 is not None
     scoring = get_scoring_function(cv_scoring)
-    shrinkages = np.logspace(-2, -0.1, 30)
+    shrinkages = np.logspace(-5, -0.1, 30)
 
     cv = GridSearchCV(Shrinkage_biasedmatrix(M0=M0), {'alpha': shrinkages}, cv=6,\
                      scoring=scoring, n_jobs=n_jobs) 
@@ -331,7 +282,7 @@ def fit_GraphicalLasso_CV(Xtrain, Xtest, n_jobs=None):
 def fit_Shrinkage_CV(Xtrain, Xtest, shrinkages=None, n_jobs=None, cv_scoring="likelihood"):
     scoring = get_scoring_function(cv_scoring)
     if shrinkages is None:
-        shrinkages = np.logspace(-2, -0.1, 30)
+        shrinkages = np.logspace(-5, -0.1, 30)
     cv = GridSearchCV(ShrunkCovariance(), {'shrinkage': shrinkages}, cv=6,\
                      scoring=scoring, n_jobs=n_jobs) 
     est = cv.fit(Xtrain).best_estimator_
@@ -433,7 +384,7 @@ def fit_RIE_CV(Xtrain, Xtest, n_jobs=None, cv_scoring="likelihood"):
     scoring = get_scoring_function(cv_scoring)
     #est = RIE().fit(Xtrain)
     T, N=np.shape(Xtrain)
-    etas = np.array([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100]) / np.sqrt(N)
+    etas = np.logspace(-5,0,20)/ np.sqrt(N)
     cv = GridSearchCV(RIE(correction=True), {'eta': etas}, cv=6, n_jobs=None, scoring=scoring)
     est = cv.fit(Xtrain).best_estimator_
 #    print(cv.best_params_)
